@@ -249,9 +249,7 @@ public class vAuth extends JFrame {
         return right;
     }
     
-    /**
-     * Tạo panel bên phải cho đăng ký
-     */
+
     private JPanel createRegisterRightPanel() {
         // Panel bên phải - Form đăng ký
         JPanel right = new JPanel();
@@ -466,8 +464,6 @@ public class vAuth extends JFrame {
     public JLabel getLblForgotPassword() {
         return lblForgotPassword;
     }
-    
-    // Getters cho Register components
     public JButton getBtnRegister() {
         return btnRegister;
     }

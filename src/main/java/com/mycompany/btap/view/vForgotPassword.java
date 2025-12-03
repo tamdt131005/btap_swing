@@ -27,9 +27,7 @@ public class vForgotPassword extends JFrame {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
         submitButton = new JButton("Submit");
         buttonPanel.add(submitButton);
-
         add(inputPanel, BorderLayout.CENTER);
         add(buttonPanel, BorderLayout.SOUTH);
     }
-    // Add getters if a controller needs them
 }

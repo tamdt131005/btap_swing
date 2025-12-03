@@ -1,79 +1,17 @@
 package com.mycompany.btap.service;
 
 import com.mycompany.btap.model.mUser;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
+import com.mycompany.btap.util.DBConnection;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.List;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
-/**
- * SERVICE - Lớp xử lý nghiệp vụ (Business Logic) cho User
- * 
- * ┌─────────────────────────────────────────────────────────────┐
- * │                    MÔ HÌNH MVC CƠ BẢN                       │
- * ├─────────────────────────────────────────────────────────────┤
- * │  VIEW (vAuth.java)                                          │
- * │    ↓ người dùng click button                                │
- * │  CONTROLLER (cAuth.java)                                    │
- * │    ↓ gọi xử lý nghiệp vụ                                    │
- * │  SERVICE (UserService.java)  ← BẠN ĐANG Ở ĐÂY               │
- * │    ↓ đọc/ghi dữ liệu                                        │
- * │  MODEL (mUser.java) + File JSON                             │
- * └─────────────────────────────────────────────────────────────┘
- * 
- * Service làm gì?
- * - Validate dữ liệu (kiểm tra đầu vào)
- * - Xử lý logic đăng ký, đăng nhập
- * - Đọc/ghi dữ liệu vào file JSON
- * 
- * @author SinhVien
- */
 public class UserService {
 
-    // ==================== THUỘC TÍNH ====================
-    
-    /** File lưu trữ danh sách user (định dạng JSON) */
-    private final File usersFile;
-    
-    /** Thư viện Gson - chuyển đổi Object <-> JSON */
-    private final Gson gson = new Gson();
-    private final Type listType = new TypeToken<List<mUser>>(){}.getType();
-    public UserService() {
-        String home = System.getProperty("user.home");
-        File dataDir = new File(home, ".btap");
+    public void dangKy(String username, String password, String email) throws Exception {
         
-        if (!dataDir.exists()) {
-            dataDir.mkdirs();
-        }
-        
-        this.usersFile = new File(dataDir, "users.json");
-    }
-
-    // ==================== ĐĂNG KÝ ====================
-
-    /**
-     * Đăng ký tài khoản mới
-     * 
-     * Quy trình:
-     * 1. Validate dữ liệu (kiểm tra rỗng, độ dài, format email)
-     * 2. Kiểm tra username/email đã tồn tại chưa
-     * 3. Tạo ID mới (ID lớn nhất + 1)
-     * 4. Lưu user mới vào file
-     * 
-     * @param username Tên đăng nhập
-     * @param password Mật khẩu (tối thiểu 6 ký tự)
-     * @param email    Email (phải chứa @)
-     * @return Thông báo thành công
-     * @throws Exception Nếu dữ liệu không hợp lệ hoặc đã tồn tại
-     */
-    public String dangKy(String username, String password, String email) throws Exception {
-        
-        // ===== BƯỚC 1: VALIDATE DỮ LIỆU =====
         if (username == null || username.trim().isEmpty()) {
             throw new Exception("Tên đăng nhập không được để trống");
         }
@@ -84,109 +22,87 @@ public class UserService {
             throw new Exception("Email không hợp lệ");
         }
 
-        // ===== BƯỚC 2: ĐỌC DANH SÁCH USER TỪ FILE =====
-        List<mUser> danhSachUser = docTatCaUser();
-
-        // ===== BƯỚC 3: KIỂM TRA TRÙNG LẶP =====
-        for (mUser user : danhSachUser) {
-            if (user.getUsername().equalsIgnoreCase(username)) {
-                throw new Exception("Tên đăng nhập đã tồn tại");
-            }
-            if (user.getEmail().equalsIgnoreCase(email)) {
-                throw new Exception("Email đã được sử dụng");
-            }
-        }
-
-        // ===== BƯỚC 4: TẠO ID MỚI =====
-        int idMoi = 1;
-        for (mUser user : danhSachUser) {
-            if (user.getId() >= idMoi) {
-                idMoi = user.getId() + 1;
-            }
-        }
-
-        // ===== BƯỚC 5: TẠO USER MỚI VÀ LƯU =====
-        mUser userMoi = new mUser(idMoi, username.trim(), email.trim(), password);
-        danhSachUser.add(userMoi);
-        ghiTatCaUser(danhSachUser);
-
-        return "Đăng ký thành công!";
-    }
-
-    // ==================== ĐĂNG NHẬP ====================
-
-    /**
-     * Đăng nhập vào hệ thống
-     * 
-     * Quy trình:
-     * 1. Tìm user theo username
-     * 2. So sánh password
-     * 3. Trả về thông tin user (KHÔNG kèm password - bảo mật)
-     * 
-     * @param username Tên đăng nhập
-     * @param password Mật khẩu
-     * @return Đối tượng mUser nếu đăng nhập thành công
-     * @throws Exception Nếu sai username hoặc password
-     */
-    public mUser dangNhap(String username, String password) throws Exception {
-        
-        // Đọc danh sách user từ file
-        List<mUser> danhSachUser = docTatCaUser();
-
-        // Tìm user theo username
-        for (mUser user : danhSachUser) {
-            if (user.getUsername().equalsIgnoreCase(username)) {
-                // Tìm thấy username, kiểm tra password
-                if (user.getPassword().equals(password)) {
-                    // Đúng password → trả về user (không kèm password)
-                    return new mUser(user.getId(), user.getUsername(), user.getEmail());
-                } else {
-                    throw new Exception("Sai mật khẩu");
+        try (Connection conn = DBConnection.getConnection()) {
+            String sqlKiemTra = "SELECT account_id FROM accounts a " +
+                                "JOIN users u ON u.user_id = a.user_id " +
+                                "WHERE a.username = ? OR u.email = ?";
+            try (PreparedStatement stmt = conn.prepareStatement(sqlKiemTra)) {
+                stmt.setString(1, username.trim());
+                stmt.setString(2, email.trim());
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        throw new Exception("Tên đăng nhập hoặc email đã tồn tại");
+                    }
                 }
             }
+            
+            String sqlThemUser = "INSERT INTO users (email) VALUES (?)";
+            int userId = 0;
+            
+            try (PreparedStatement stmt = conn.prepareStatement(sqlThemUser, PreparedStatement.RETURN_GENERATED_KEYS)) {
+                stmt.setString(1, email.trim());
+                int rowsAffected = stmt.executeUpdate();
+                if (rowsAffected == 0) {
+                    throw new Exception("Không thể tạo người dùng");
+                }
+                try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
+                    if (generatedKeys.next()) {
+                        userId = generatedKeys.getInt(1);
+                    } else {
+                        throw new Exception("Không thể lấy ID người dùng mới tạo");
+                    }
+                }
+            }
+            String sqlThemAccount = "INSERT INTO accounts (username, password, user_id, status, role) " +
+                                    "VALUES (?, ?, ?, 'active', 'user')";
+            try (PreparedStatement stmt = conn.prepareStatement(sqlThemAccount)) {
+                stmt.setString(1, username.trim());
+                stmt.setString(2, password);
+                stmt.setInt(3, userId);
+                
+                int rowsAffected = stmt.executeUpdate();
+                if (rowsAffected == 0) {
+                    throw new Exception("Không thể tạo tài khoản");
+                }
+            }
+            
+        } catch (SQLException e) {
+            throw new Exception("Lỗi kết nối database: " + e.getMessage());
         }
-        
-        // Không tìm thấy username
-        throw new Exception("Tài khoản không tồn tại");
     }
+    public mUser dangNhap(String username, String password) throws Exception {
 
-    // ==================== ĐỌC/GHI FILE JSON ====================
-
-    /**
-     * Đọc tất cả user từ file JSON
-     * 
-     * File JSON có dạng:
-     * [
-     *   {"id":1, "username":"user1", "email":"a@b.com", "password":"123456"},
-     *   {"id":2, "username":"user2", "email":"c@d.com", "password":"abcdef"}
-     * ]
-     * 
-     * @return Danh sách user, hoặc list rỗng nếu chưa có file
-     */
-    private List<mUser> docTatCaUser() {
-        if (!usersFile.exists()) {
-            return new ArrayList<>();
-        }
-        
-        try (FileReader reader = new FileReader(usersFile)) {
-            List<mUser> users = gson.fromJson(reader, listType);
-            return users != null ? users : new ArrayList<>();
-        } catch (Exception e) {
-            System.out.println("Lỗi đọc file: " + e.getMessage());
-            return new ArrayList<>();
-        }
-    }
-
-    /**
-     * Ghi toàn bộ danh sách user vào file JSON
-     * 
-     * @param danhSachUser Danh sách user cần lưu
-     */
-    private void ghiTatCaUser(List<mUser> danhSachUser) {
-        try (FileWriter writer = new FileWriter(usersFile)) {
-            gson.toJson(danhSachUser, writer);
-        } catch (Exception e) {
-            System.out.println("Lỗi ghi file: " + e.getMessage());
+        try (Connection conn = DBConnection.getConnection()) {
+            String sql = "SELECT a.account_id, a.username, u.email, a.password " +
+                         "FROM accounts a " +
+                         "JOIN users u ON a.user_id = u.user_id " +
+                         "WHERE a.username = ? OR u.email = ? AND a.status = 'active'";
+            
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setString(1, username.trim());
+                stmt.setString(2, username.trim());
+                
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        String storedPassword = rs.getString("password");
+                        
+                        if (storedPassword.equals(password)) {
+                            return new mUser(
+                                rs.getInt("account_id"),
+                                rs.getString("username"),
+                                rs.getString("email")
+                            );
+                        } else {
+                            throw new Exception("Sai mật khẩu");
+                        }
+                    } else {
+                        throw new Exception("Tài khoản không tồn tại");
+                    }
+                }
+            }
+            
+        } catch (SQLException e) {
+            throw new Exception("Lỗi kết nối database: " + e.getMessage());
         }
     }
 }
