@@ -2,262 +2,235 @@ package com.mycompany.btap.controller;
 
 import com.mycompany.btap.model.mUser;
 import com.mycompany.btap.service.UserService;
-import com.mycompany.btap.service.impl.UserServiceImpl;
 import com.mycompany.btap.view.vAuth;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import javax.swing.JOptionPane;
-import javax.swing.SwingWorker;
 
 /**
- * Controller hợp nhất cho Login và Register
- * @author tamdt
+ * CONTROLLER - Lớp điều khiển cho màn hình Đăng nhập/Đăng ký
+ * 
+ * ┌─────────────────────────────────────────────────────────────┐
+ * │                    MÔ HÌNH MVC CƠ BẢN                       │
+ * ├─────────────────────────────────────────────────────────────┤
+ * │  VIEW (vAuth.java) - Giao diện người dùng                   │
+ * │    ↓ người dùng click button                                │
+ * │  CONTROLLER (cAuth.java) ← BẠN ĐANG Ở ĐÂY                   │
+ * │    ↓ gọi xử lý nghiệp vụ                                    │
+ * │  SERVICE (UserService.java) - Xử lý logic                   │
+ * │    ↓ đọc/ghi dữ liệu                                        │
+ * │  MODEL (mUser.java) - Đối tượng dữ liệu                     │
+ * └─────────────────────────────────────────────────────────────┘
+ * 
+ * Controller làm gì?
+ * - Lắng nghe sự kiện từ View (click button, nhập text...)
+ * - Lấy dữ liệu từ View
+ * - Gọi Service để xử lý
+ * - Hiển thị kết quả lên View (thông báo, chuyển màn hình...)
+ * 
+ * @author SinhVien
  */
 public class cAuth implements ActionListener {
-    private final vAuth authView;
+    
+    // ==================== THUỘC TÍNH ====================
+    
+    /** View - màn hình đăng nhập/đăng ký */
+    private final vAuth view;
+    
+    /** Service - xử lý logic đăng nhập/đăng ký */
     private final UserService userService;
 
-    public cAuth(vAuth authView) {
-        this.authView = authView;
-        registerListeners();
-        this.userService = new UserServiceImpl();
+    // ==================== CONSTRUCTOR ====================
+    
+    /**
+     * Khởi tạo Controller
+     * 
+     * @param view Màn hình đăng nhập/đăng ký
+     */
+    public cAuth(vAuth view) {
+        this.view = view;
+        this.userService = new UserService();
+        
+        // Đăng ký các sự kiện (listeners)
+        dangKySuKien();
     }
 
+    // ==================== XỬ LÝ SỰ KIỆN ====================
+    
+    /**
+     * Phương thức từ ActionListener
+     * Được gọi khi người dùng click button
+     */
     @Override
     public void actionPerformed(ActionEvent e) {
-        if (e.getSource() == authView.getBtnLogin()) {
-            handleLogin();
-        } else if (e.getSource() == authView.getBtnRegister()) {
-            handleRegister();
+        if (e.getSource() == view.getBtnLogin()) {
+            xuLyDangNhap();
+        } else if (e.getSource() == view.getBtnRegister()) {
+            xuLyDangKy();
         }
     }
 
     /**
-     * Đăng ký tất cả các listeners
+     * Đăng ký tất cả các sự kiện (listeners) cho View
      */
-    private void registerListeners() {
-        // Login button listener
-        authView.getBtnLogin().addActionListener(this);
+    private void dangKySuKien() {
+        // Sự kiện click nút Đăng nhập
+        view.getBtnLogin().addActionListener(this);
         
-        // Register button listener
-        authView.getBtnRegister().addActionListener(this);
+        // Sự kiện click nút Đăng ký
+        view.getBtnRegister().addActionListener(this);
         
-        // Switch to Register listener
-        authView.getLblSwitchToRegister().addMouseListener(new MouseAdapter() {
+        // Sự kiện click "Đăng ký ngay" để chuyển sang form đăng ký
+        view.getLblSwitchToRegister().addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                switchToRegister();
+                chuyenSangDangKy();
             }
         });
         
-        // Switch to Login listener
-        authView.getLblSwitchToLogin().addMouseListener(new MouseAdapter() {
+        // Sự kiện click "Đăng nhập ngay" để chuyển sang form đăng nhập
+        view.getLblSwitchToLogin().addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                switchToLogin();
+                chuyenSangDangNhap();
             }
         });
         
-        // Forgot Password listener
-        authView.getLblForgotPassword().addMouseListener(new MouseAdapter() {
+        // Sự kiện click "Quên mật khẩu"
+        view.getLblForgotPassword().addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                handleForgotPassword();
+                xuLyQuenMatKhau();
             }
         });
     }
 
-    /**
-     * Xử lý đăng nhập
-     */
-    private void handleLogin() {
-        String username = authView.getTxtLoginUsername().getText().trim();
-        char[] passwordChars = authView.getTxtLoginPassword().getPassword();
-        String password = new String(passwordChars);
+    // ==================== XỬ LÝ ĐĂNG NHẬP ====================
 
-        // Validate input
+    /**
+     * Xử lý khi người dùng click nút Đăng nhập
+     */
+    private void xuLyDangNhap() {
+        // BƯỚC 1: Lấy dữ liệu từ View
+        String username = view.getTxtLoginUsername().getText().trim();
+        String password = new String(view.getTxtLoginPassword().getPassword());
+
+        // BƯỚC 2: Kiểm tra dữ liệu rỗng
         if (username.isEmpty() || password.isEmpty()) {
-            JOptionPane.showMessageDialog(
-                    authView,
-                    "Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.",
-                    "Thiếu thông tin",
-                    JOptionPane.WARNING_MESSAGE
-            );
+            hienThongBao("Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.", "Thiếu thông tin", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        // Disable button and show loading state
-        authView.getBtnLogin().setEnabled(false);
-        authView.getBtnLogin().setText("Đang đăng nhập...");
+        // BƯỚC 3: Gọi Service để xử lý đăng nhập
+        try {
+            mUser user = userService.dangNhap(username, password);
+            
+            // Thành công → hiển thị thông báo
+            hienThongBao("Đăng nhập thành công!\nXin chào " + user.getUsername(), "Thành công", JOptionPane.INFORMATION_MESSAGE);
+            
+            // TODO: Chuyển sang màn hình chính
+            // view.dispose();
+            // new HomeView(user).setVisible(true);
+            
+        } catch (Exception ex) {
+            // Thất bại → hiển thị lỗi
+            hienThongBao("Đăng nhập thất bại: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
 
-        // Execute login in background thread
-        new SwingWorker<mUser, Void>() {
-            @Override
-            protected mUser doInBackground() throws Exception {
-                return userService.loginUser(username, password);
-            }
-
-            @Override
-            protected void done() {
-                try {
-                    mUser user = get();
-                    JOptionPane.showMessageDialog(
-                            authView,
-                            "Đăng nhập thành công! Xin chào " + user.getUsername(),
-                            "Thành công",
-                            JOptionPane.INFORMATION_MESSAGE
-                    );
-                    // TODO: Chuyển sang màn hình chính tại đây
-                    // authView.dispose();
-                    // new HomeView(user).setVisible(true);
-                } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(
-                            authView,
-                            "Đăng nhập thất bại: " + ex.getMessage(),
-                            "Lỗi",
-                            JOptionPane.ERROR_MESSAGE
-                    );
-                } finally {
-                    // Re-enable button
-                    authView.getBtnLogin().setEnabled(true);
-                    authView.getBtnLogin().setText("Đăng Nhập");
-                    // Clear password field for security
-                    authView.getTxtLoginPassword().setText("");
-                }
-            }
-        }.execute();
+        // BƯỚC 4: Xóa password (bảo mật)
+        view.getTxtLoginPassword().setText("");
     }
+
+    // ==================== XỬ LÝ ĐĂNG KÝ ====================
 
     /**
-     * Xử lý đăng ký
+     * Xử lý khi người dùng click nút Đăng ký
      */
-    private void handleRegister() {
-        String username = authView.getTxtRegisterUsername().getText().trim();
-        String email = authView.getTxtEmail().getText().trim();
-        char[] passwordChars = authView.getTxtRegisterPassword().getPassword();
-        String password = new String(passwordChars);
-        char[] confirmPasswordChars = authView.getTxtConfirmPassword().getPassword();
-        String confirmPassword = new String(confirmPasswordChars);
+    private void xuLyDangKy() {
+        // BƯỚC 1: Lấy dữ liệu từ View
+        String username = view.getTxtRegisterUsername().getText().trim();
+        String email = view.getTxtEmail().getText().trim();
+        String password = new String(view.getTxtRegisterPassword().getPassword());
+        String confirmPassword = new String(view.getTxtConfirmPassword().getPassword());
 
-        // Validate input
+        // BƯỚC 2: Kiểm tra dữ liệu rỗng
         if (username.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
-            JOptionPane.showMessageDialog(
-                    authView,
-                    "Vui lòng điền đầy đủ tất cả các trường.",
-                    "Thiếu thông tin",
-                    JOptionPane.WARNING_MESSAGE
-            );
+            hienThongBao("Vui lòng điền đầy đủ tất cả các trường.", "Thiếu thông tin", JOptionPane.WARNING_MESSAGE);
             return;
         }
-
-        // Validate password match
+        
+        // BƯỚC 3: Kiểm tra mật khẩu xác nhận
         if (!password.equals(confirmPassword)) {
-            JOptionPane.showMessageDialog(
-                    authView,
-                    "Mật khẩu xác nhận không khớp.",
-                    "Lỗi xác nhận",
-                    JOptionPane.ERROR_MESSAGE
-            );
+            hienThongBao("Mật khẩu xác nhận không khớp.", "Lỗi", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        // Validate email format
-        if (!email.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
-            JOptionPane.showMessageDialog(
-                    authView,
-                    "Email không hợp lệ.",
-                    "Lỗi định dạng",
-                    JOptionPane.ERROR_MESSAGE
-            );
-            return;
+        // BƯỚC 4: Gọi Service để xử lý đăng ký
+        try {
+            String thongBao = userService.dangKy(username, password, email);
+            
+            // Thành công → hiển thị thông báo và chuyển sang đăng nhập
+            hienThongBao(thongBao, "Thành công", JOptionPane.INFORMATION_MESSAGE);
+            xoaTruongDangKy();
+            chuyenSangDangNhap();
+            
+        } catch (Exception ex) {
+            // Thất bại → hiển thị lỗi
+            hienThongBao("Đăng ký thất bại: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
         }
-
-        // Disable button and show loading state
-        authView.getBtnRegister().setEnabled(false);
-        authView.getBtnRegister().setText("Đang đăng ký...");
-
-        // Execute register in background thread
-        new SwingWorker<String, Void>() {
-            @Override
-            protected String doInBackground() throws Exception {
-                return userService.registerUser(username, password, email);
-            }
-
-            @Override
-            protected void done() {
-                try {
-                    String successMessage = get();
-                    JOptionPane.showMessageDialog(
-                            authView,
-                            successMessage,
-                            "Đăng ký thành công",
-                            JOptionPane.INFORMATION_MESSAGE
-                    );
-                    // Clear all fields
-                    clearRegisterFields();
-                    // Switch to login view
-                    switchToLogin();
-                } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(
-                            authView,
-                            "Đăng ký thất bại: " + ex.getMessage(),
-                            "Lỗi",
-                            JOptionPane.ERROR_MESSAGE
-                    );
-                } finally {
-                    // Re-enable button
-                    authView.getBtnRegister().setEnabled(true);
-                    authView.getBtnRegister().setText("Đăng Ký");
-                }
-            }
-        }.execute();
     }
+
+    // ==================== CHUYỂN ĐỔI MÀN HÌNH ====================
 
     /**
      * Chuyển sang màn hình đăng ký
      */
-    private void switchToRegister() {
-        clearLoginFields();
-        authView.showRegisterCard();
+    private void chuyenSangDangKy() {
+        xoaTruongDangNhap();
+        view.showRegisterCard();
     }
 
     /**
      * Chuyển sang màn hình đăng nhập
      */
-    private void switchToLogin() {
-        clearRegisterFields();
-        authView.showLoginCard();
+    private void chuyenSangDangNhap() {
+        xoaTruongDangKy();
+        view.showLoginCard();
     }
 
     /**
      * Xử lý quên mật khẩu
      */
-    private void handleForgotPassword() {
-        JOptionPane.showMessageDialog(
-                authView,
-                "Vui lòng liên hệ quản trị viên để đặt lại mật khẩu.",
-                "Quên mật khẩu",
-                JOptionPane.INFORMATION_MESSAGE
-        );
+    private void xuLyQuenMatKhau() {
+        hienThongBao("Vui lòng liên hệ quản trị viên để đặt lại mật khẩu.", "Quên mật khẩu", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    // ==================== PHƯƠNG THỨC TIỆN ÍCH ====================
+
+    /**
+     * Hiển thị thông báo dialog
+     */
+    private void hienThongBao(String noiDung, String tieuDe, int loai) {
+        JOptionPane.showMessageDialog(view, noiDung, tieuDe, loai);
     }
 
     /**
      * Xóa các trường đăng nhập
      */
-    private void clearLoginFields() {
-        authView.getTxtLoginUsername().setText("");
-        authView.getTxtLoginPassword().setText("");
+    private void xoaTruongDangNhap() {
+        view.getTxtLoginUsername().setText("");
+        view.getTxtLoginPassword().setText("");
     }
 
     /**
      * Xóa các trường đăng ký
      */
-    private void clearRegisterFields() {
-        authView.getTxtRegisterUsername().setText("");
-        authView.getTxtEmail().setText("");
-        authView.getTxtRegisterPassword().setText("");
-        authView.getTxtConfirmPassword().setText("");
+    private void xoaTruongDangKy() {
+        view.getTxtRegisterUsername().setText("");
+        view.getTxtEmail().setText("");
+        view.getTxtRegisterPassword().setText("");
+        view.getTxtConfirmPassword().setText("");
     }
 }

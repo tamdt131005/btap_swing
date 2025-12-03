@@ -1,52 +1,90 @@
 package com.mycompany.btap.model;
+
+/**
+ * MODEL - Lớp đại diện cho đối tượng Người dùng
+ * 
+ * Trong mô hình MVC:
+ * - Model chứa DỮ LIỆU và các thuộc tính của đối tượng
+ * - Model KHÔNG chứa logic xử lý hay giao diện
+ * - Model chỉ có: thuộc tính (fields), constructor, getter/setter
+ * 
+ * @author SinhVien
+ */
 public class mUser {
 
-    private final int id;
-    private final String username;
-    private final String email;
-    private final String passwordHash;
-    private final String salt;
+    // ==================== CÁC THUỘC TÍNH ====================
+    private int id;              // Mã người dùng (khóa chính)
+    private String username;     // Tên đăng nhập
+    private String email;        // Email
+    private String password;     // Mật khẩu
 
-    public mUser(int id, String username, String email, String passwordHash, String salt) {
+    // ==================== CONSTRUCTORS ====================
+    
+    /**
+     * Constructor mặc định - cần thiết cho Gson đọc JSON
+     */
+    public mUser() {
+    }
+    
+    /**
+     * Constructor đầy đủ - tạo user với tất cả thông tin
+     */
+    public mUser(int id, String username, String email, String password) {
         this.id = id;
         this.username = username;
         this.email = email;
-        this.passwordHash = passwordHash;
-        this.salt = salt;
+        this.password = password;
     }
 
-    // convenience constructor for cases where password is not included
+    /**
+     * Constructor không có password - dùng khi trả về user sau đăng nhập
+     * (không nên trả password ra ngoài)
+     */
     public mUser(int id, String username, String email) {
-        this(id, username, email, null, null);
+        this.id = id;
+        this.username = username;
+        this.email = email;
+        this.password = null;
     }
 
-    // Getters
+    // ==================== GETTERS & SETTERS ====================
+    
     public int getId() {
         return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
     }
 
     public String getUsername() {
         return username;
     }
 
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
     public String getEmail() {
         return email;
     }
 
-    public String getPasswordHash() {
-        return passwordHash;
+    public void setEmail(String email) {
+        this.email = email;
     }
 
-    public String getSalt() {
-        return salt;
+    public String getPassword() {
+        return password;
     }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+    
+    // ==================== PHƯƠNG THỨC TIỆN ÍCH ====================
     
     @Override
     public String toString() {
-        return "mUser{" +
-                "id=" + id +
-                ", username='" + username + '\'' +
-                ", email='" + email + '\'' +
-                '}';
+        return "User[id=" + id + ", username=" + username + ", email=" + email + "]";
     }
 }

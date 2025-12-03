@@ -12,7 +12,7 @@ public final class DBConnection {
         Map<String, String> env = System.getenv();
         String host = env.getOrDefault("DB_HOST", "localhost");
         String port = env.getOrDefault("DB_PORT", "3306");
-        String db = env.getOrDefault("DB_NAME", "btap");
+        String db = env.getOrDefault("DB_NAME", "btap_swing");
         String user = env.getOrDefault("DB_USER", "root");
         String pass = env.getOrDefault("DB_PASSWORD", "");
 
